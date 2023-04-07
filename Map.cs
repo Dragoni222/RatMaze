@@ -39,6 +39,10 @@ while (end == false)
         {
             LoadMatrixTest();
         }
+        else if (answer == "aitest")
+        {
+            LoadAiTest();
+        }
     }
         
 
@@ -97,10 +101,10 @@ void LoadMatrixTest()
         timer.Start();
         if (i == 0)
         {
-            double[] sideValues = new double[sideLength];
+            Weight[] sideValues = new Weight[sideLength];
             for (ulong j = 0; j < sideLength; j++)
             {
-                sideValues[j] = j;
+                sideValues[j].GiveDopamine(j, sideValues);
             }
             testMatrix = new AIDimension(sideValues);
         }
@@ -131,6 +135,56 @@ void LoadMatrixTest()
     stopwatch.Stop();
     Console.WriteLine("Time elapsed getting value: " + stopwatch.Elapsed);
     Console.ReadLine();
+}
+
+void LoadAiTest()//loads a test for learning addition.
+{
+    Console.Clear();
+    AI testAI = new AI(200, new List<Input>() {new Input(100, 1), new Input(100,1)});
+    Console.Write("Seed: ");
+    Random random = new Random(int.Parse(Console.ReadLine()));
+    Console.Write("\n Cycles: ");
+    int cycles = int.Parse(Console.ReadLine());
+    Console.Write("\n Train Speed: ");
+    double trainSpeed = double.Parse(Console.ReadLine());
+    Stopwatch stopwatch = new Stopwatch();
+    stopwatch.Start();
+    for (int i = 0; i < cycles; i++)
+    {
+        if (i % 1000000 == 0)
+        {
+            Console.WriteLine("Cycle: " + i);
+        }
+
+        testAI.Inputs[0].SetValue((ulong)random.Next(0,100));
+        testAI.Inputs[1].SetValue((ulong)random.Next(0,100));
+        int expectedValue = (int)testAI.Inputs[0].GetValue() + (int)testAI.Inputs[1].GetValue();
+        AI.TrainByDifferenceKnown(testAI, expectedValue, random, trainSpeed);
+    }
+
+    stopwatch.Stop();
+    Console.WriteLine($"Completed. Time: {stopwatch.Elapsed}.     Test? (Y/N)");
+    string input = Console.ReadLine();
+    if (input == "y" || input == "Y")
+    {
+        bool end = false;
+        while (!end)
+        {
+            Console.Write("\nTest input 1: (0-100): ");
+            testAI.Inputs[0].SetValue(ulong.Parse(Console.ReadLine()));
+            Console.Write("\nTest input 2: (0-100): ");
+            testAI.Inputs[1].SetValue(ulong.Parse(Console.ReadLine()));
+            Console.WriteLine(AI.GetBestActionKnown(testAI.AiMatrix, testAI.Inputs ) + "  End? (Y/N)");
+            input = Console.ReadLine();
+            if (input == "Y" || input == "y")
+            {
+                end = true;
+            }
+        }
+       
+        
+    }
+
 }
 
 void LoadQuestion()
@@ -222,11 +276,16 @@ class AI
     public AI(int outputs, List<Input> inputs)
     {
         Outputs = outputs;
-        AiMatrix = new AIDimension(4);
         Inputs = inputs;
+        Weight[] baseWeights = new Weight[outputs];
+        for (int i = 0; i < outputs; i++) //each output has a weight
+        {
+            baseWeights[i] = new Weight(1/(double)outputs, 0, 1);
+        }
+        AiMatrix = new AIDimension(baseWeights);
         foreach (Input input in inputs) //each input is a new dimension
         {
-            AiMatrix = new AIDimension(input.MaxValue, AiMatrix, false);
+            AiMatrix = new AIDimension(input.MaxValue, AiMatrix, true); //creates a symetrical matrix with base weights
         }
     }
 
@@ -238,8 +297,32 @@ class AI
             inputArray[i] = (int)inputs[i].GetValue();
         }
 
-        double[] weights = AIDimension.GetWeights(matrix, inputArray);
+        double[] weights = AIDimension.GetWeightsDouble(matrix, inputArray);
+        
         return weights.ToList().IndexOf(weights.Max());
+    }
+    public static int GetRandomActionKnown(AIDimension matrix, List<Input> inputs, Random random)
+    {
+        int[] inputArray = new int[inputs.Count];
+        for (int i = 0; i < inputs.Count; i++)
+        {
+            inputArray[i] = (int)inputs[i].GetValue();
+        }
+        Weight[] weights = AIDimension.GetWeights(matrix, inputArray);
+        double randomCheck = random.NextDouble();
+        double currentRandomSum = 0;
+        for (int i = 0; i < weights.Length; i++)
+        {
+            if ((randomCheck >= currentRandomSum && randomCheck < currentRandomSum + weights[i].GetValue()) || i + 1 == weights.Length)
+            {
+                return i;
+            }
+            else
+            {
+                currentRandomSum += weights[i].GetValue();
+            }
+        }
+        return -1;
     }
 
     public static int GetBestActionUnknown(AIDimension matrix, List<Input> inputsWithNulls, string consolidateType) //input the ordered with with some null values, will attempt to approximate
@@ -248,6 +331,7 @@ class AI
         if (consolidateType == "mean")
         {
             double[] weights = ConsolidateAbstractionMean(abstraction);
+            
             return weights.ToList().IndexOf(weights.Max());
         }
         else
@@ -256,8 +340,28 @@ class AI
             return -1;
         }
     }
-    
-    
+
+    public static int TrainByDifferenceKnown(AI ai, int expected, Random random, double trainSpeed) // trains with current input values, valuing by difference between expected and given values.
+    {
+        int[] inputArray = new int[ai.Inputs.Count];
+        for (int i = 0; i < ai.Inputs.Count; i++)
+        {
+            inputArray[i] = (int)ai.Inputs[i].GetValue();
+        }
+
+        int action = GetRandomActionKnown(ai.AiMatrix, ai.Inputs, random);
+        int[] inputArrayWeight = new int[ai.Inputs.Count + 1];
+        for (int i = 0; i < ai.Inputs.Count; i++)
+        {
+            inputArrayWeight[i] = inputArray[i];
+        }
+        
+        inputArrayWeight[^1] = action;
+        double difference = Math.Abs(expected - action);
+        
+        AIDimension.ChangeSpecificWeight(ai.AiMatrix, inputArrayWeight, 1/(difference+0.25d) * trainSpeed);
+        return action;
+    }
 
     private static AIDimension Abstract(AIDimension matrix, List<Input> inputsWithNulls) //^^
     {
@@ -288,7 +392,12 @@ class AI
     {
         if (abstraction.Weights != null)
         {
-            return abstraction.Weights;
+            double[] final = new double[abstraction.Weights.Length];
+            for(int i = 0; i < abstraction.Weights.Length; i++)
+            {
+                final[i] = abstraction.Weights[i].GetValue();
+            }
+            return final;
         }
         else
         {
@@ -312,7 +421,7 @@ class AI
 
             for(int i = 0; i < finalWeights.Count; i++)
             {
-                finalWeights[i] /= totalWeightSets;
+                finalWeights[i]/=totalWeightSets;
             }
 
             return finalWeights.ToArray();
@@ -366,7 +475,7 @@ class Input
 class AIDimension
 {
     public List<AIDimension> Positions;
-    public double[] Weights; //only the lowest dimension has weights
+    public Weight[] Weights; //only the lowest dimension has weights
 
     public AIDimension(ulong numOfPossibleValues, AIDimension currentMatrix ,bool copy)
     {
@@ -377,7 +486,7 @@ class AIDimension
         {
             for (ulong i = 1; i < numOfPossibleValues; i++)
             {
-                Positions.Add(currentMatrix);
+                Positions.Add(CopyDimension(currentMatrix, false));
             }
         }
         else
@@ -385,14 +494,14 @@ class AIDimension
             AIDimension unweighted = UnweightedMatrix(currentMatrix);
             for (ulong i = 1; i < numOfPossibleValues; i++)
             {
-                Positions.Add(CopyDimension(unweighted));
+                Positions.Add(CopyDimension(unweighted, false));
             }
         }
         
         
     }
 
-    public AIDimension(double[] weights)
+    public AIDimension(Weight[] weights)
     {
         Weights = weights;
         Positions = new List<AIDimension>();
@@ -400,10 +509,10 @@ class AIDimension
 
     public AIDimension(int length)
     {
-        Weights = new double[length];
+        Weights = new Weight[length];
         for (int i = 0; i < length; i++)
         {
-            Weights[i] = 0;
+            Weights[i] = new Weight((1/(double)length), 0, 1);
         }
 
         Positions = new List<AIDimension>();
@@ -414,12 +523,15 @@ class AIDimension
         Positions = positions;
     }
     
-    public static AIDimension CopyDimension(AIDimension copy)
+    public static AIDimension CopyDimension(AIDimension copy, bool copyTimesUsed)
     {
         if (copy.Weights != null)
         {
-            double[] weightCopy = new double[copy.Weights.Length];
-            Array.Copy(copy.Weights, weightCopy, copy.Weights.Length);
+            Weight[] weightCopy = new Weight[copy.Weights.Length]; //WARNING THIS ASSIGNS INSTEAD OF COPYS WEIGHTS
+            for(int i = 0; i < weightCopy.Length; i++)
+            {
+                weightCopy[i] = copy.Weights[i].Copy(copyTimesUsed);
+            }
             return new AIDimension(weightCopy);
         }
         else
@@ -427,21 +539,32 @@ class AIDimension
             List<AIDimension> positions = new List<AIDimension>();
             for (int i = 0; i < copy.Positions.Count; i++)
             {
-                positions.Add(CopyDimension(copy.Positions[i]));
+                positions.Add(CopyDimension(copy.Positions[i], copyTimesUsed));
             }
             return new AIDimension(positions);
         }
         
     }
 
+    public static double GetWeightsDopamine(Weight[] weights)
+    {
+        double total = 0;
+        foreach (var weight in weights)
+        {
+            total += weight.GetDopamine();
+        }
+
+        return total;
+    }
+
     public static AIDimension UnweightedMatrix(AIDimension weightedMatrix)
     {
-        AIDimension unweighted =  CopyDimension(weightedMatrix);
+        AIDimension unweighted =  CopyDimension(weightedMatrix, false);
         if (unweighted.Weights is { Length: > 0 })
         {
             for (int i = 0; i < unweighted.Weights.Length; i++)
             {
-                unweighted.Weights[i] = 0;
+                unweighted.Weights[i].GiveDopamine(-unweighted.Weights[i].GetDopamine() + 1, unweighted.Weights);
             }
         }
         else
@@ -456,37 +579,55 @@ class AIDimension
 
     }
 
-    public static void ChangeSpecificWeight(AIDimension matrix, int[] address, double newValue)
+    public static void ChangeSpecificWeight(AIDimension matrix, int[] address, double dopamine)
     {
-        
+
         if (address.Length == 1)
         {
             try
             {
-                matrix.Weights[address[0]] = newValue;
+                double originalValue = matrix.Weights[address[0]].GetValue();
+                matrix.Weights[address[0]].GiveDopamine(dopamine, matrix.Weights);
+                double newValue = matrix.Weights[address[0]].GetValue();
+                
+                
             }
             catch (Exception e)
             {
-                Console.Write("Change Wrong Address");
+                Console.Write("Change Wrong Address: "  + address[0]);
             }
         }
         else
         {
-            ChangeSpecificWeight(matrix.Positions[address[0]], address.Skip(1).ToArray(), newValue);
+            ChangeSpecificWeight(matrix.Positions[address[0]], address.Skip(1).ToArray(), dopamine);
+        }
+    }
+
+    public static int GetDimensions(AIDimension matrix, int startValue) //startValue should be 1, returns number of dimensions (not counting weights)
+    {
+        if (matrix.Positions.Any())
+        { 
+             return GetDimensions(matrix.Positions[0], startValue + 1);
+        }
+        else
+        {
+            return startValue;
         }
     }
     
     public static double GetSpecificWeight(AIDimension matrix, int[] address)
     {
+
         if (address.Length == 1)
         {
+
             try
             {
-                return matrix.Weights[address[0]];
+                return matrix.Weights[address[0]].GetValue();
             }
             catch (Exception e)
             {
-                Console.Write("Get Wrong Address");
+                Console.Write("Get Wrong Address: " + address[0]);
             }
         }
         else
@@ -497,13 +638,14 @@ class AIDimension
         return -1;
     }
 
-    public static double[] GetWeights(AIDimension matrix, int[] address)
+    public static Weight[] GetWeights(AIDimension matrix, int[] address)
     {
-        if (address.Length == 2)
+        
+        if (address.Length == 1)
         {
             try
             {
-                return matrix.Weights;
+                return matrix.Positions[address[0]].Weights;
             }
             catch (Exception e)
             {
@@ -514,11 +656,108 @@ class AIDimension
         {
             return GetWeights(matrix.Positions[address[0]], address.Skip(1).ToArray());
         }
-
+        Console.WriteLine("GetWeightsFailed");
         return null;
     }
+
+    public static double[] GetWeightsDouble(AIDimension matrix, int[] address)
+    {
+        if (address.Length == 1)
+        {
+            try
+            {
+                double[] finalWeights = new double[matrix.Positions[address[0]].Weights.Length];
+                for (int i = 0; i < finalWeights.Length; i++)
+                {
+                    finalWeights[i] = matrix.Positions[address[0]].Weights[i].GetValue();
+                }
+                return finalWeights;
+            }
+            catch (Exception e)
+            {
+                Console.Write("Get Wrong multi Address");
+            }
+        }
+        else
+        {
+            return GetWeightsDouble(matrix.Positions[address[0]], address.Skip(1).ToArray());
+        }
+        Console.WriteLine("GetWeightsFailed");
+        return null;
+    }
+
+}
+
+class Weight
+{
+    private double value;
+    public int timesUsed;
+    private double dopamine;
+    public Weight(double startValue)
+    {
+        value = startValue;
+        dopamine = 1;
+        timesUsed = 0;
+    }
+    public Weight(double startValue, int startTimesUsed)
+    {
+        value = startValue;
+        dopamine = 1;
+        timesUsed = startTimesUsed;
+    }
+    public Weight(double startValue, int startTimesUsed, double startDopamine)
+    {
+        value = startValue;
+        dopamine = startDopamine;
+        timesUsed = startTimesUsed;
+        
+    }
+
+    public void GiveDopamine(double dope, Weight[] weights)
+    {
+        dopamine += dope;
+        double totalDopamine = AIDimension.GetWeightsDopamine(weights);
+        SetValue(dopamine/totalDopamine);
+        for (int i = 0; i < weights.Length; i++)
+        {
+            if (weights[i] != this)
+            {
+                weights[i].SetValue(weights[i].GetDopamine()/totalDopamine);
+            }
+        }
+        timesUsed++;
+    }
+
+    public double GetDopamine()
+    {
+        return dopamine;
+    }
     
+    private void SetValue(double newValue)
+    {
+        if (newValue <= 1 && newValue >= 0)
+        {
+            value = newValue;
+        }
+        else
+        {
+            Console.WriteLine("Attempted to change weight to " + newValue);
+        }
+    }
     
+
+    public double GetValue()
+    {
+        return value;
+    }
+    
+
+    public Weight Copy(bool copyTimesUsed)
+    {
+        if (copyTimesUsed)
+            return new Weight(value,timesUsed,dopamine);
+        else return new Weight(value, 0, dopamine);
+    }
 
 }
 
