@@ -4,7 +4,27 @@
     <projectFile>RatMaze.csproj</projectFile>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6356dbfa-08c6-4f9a-b99c-9178c30c4578" name="Changes" comment="" />
+    <list default="true" id="6356dbfa-08c6-4f9a-b99c-9178c30c4578" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/.idea.RatMaze.dir/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.RatMaze.dir/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Map.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Map.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/Debug/net7.0/RatMaze.dll" beforeDir="false" afterPath="$PROJECT_DIR$/bin/Debug/net7.0/RatMaze.dll" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/Debug/net7.0/RatMaze.pdb" beforeDir="false" afterPath="$PROJECT_DIR$/bin/Debug/net7.0/RatMaze.pdb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/obj/Debug/net7.0/RatMaze.GeneratedMSBuildEditorConfig.editorconfig" beforeDir="false" afterPath="$PROJECT_DIR$/obj/Debug/net7.0/RatMaze.GeneratedMSBuildEditorConfig.editorconfig" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/obj/Debug/net7.0/RatMaze.assets.cache" beforeDir="false" afterPath="$PROJECT_DIR$/obj/Debug/net7.0/RatMaze.assets.cache" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/obj/Debug/net7.0/RatMaze.csproj.CoreCompileInputs.cache" beforeDir="false" afterPath="$PROJECT_DIR$/obj/Debug/net7.0/RatMaze.csproj.CoreCompileInputs.cache" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/obj/Debug/net7.0/RatMaze.csproj.FileListAbsolute.txt" beforeDir="false" afterPath="$PROJECT_DIR$/obj/Debug/net7.0/RatMaze.csproj.FileListAbsolute.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/obj/Debug/net7.0/RatMaze.dll" beforeDir="false" afterPath="$PROJECT_DIR$/obj/Debug/net7.0/RatMaze.dll" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/obj/Debug/net7.0/RatMaze.genruntimeconfig.cache" beforeDir="false" afterPath="$PROJECT_DIR$/obj/Debug/net7.0/RatMaze.genruntimeconfig.cache" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/obj/Debug/net7.0/RatMaze.pdb" beforeDir="false" afterPath="$PROJECT_DIR$/obj/Debug/net7.0/RatMaze.pdb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/obj/Debug/net7.0/ref/RatMaze.dll" beforeDir="false" afterPath="$PROJECT_DIR$/obj/Debug/net7.0/ref/RatMaze.dll" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/obj/Debug/net7.0/refint/RatMaze.dll" beforeDir="false" afterPath="$PROJECT_DIR$/obj/Debug/net7.0/refint/RatMaze.dll" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/obj/RatMaze.csproj.nuget.dgspec.json" beforeDir="false" afterPath="$PROJECT_DIR$/obj/RatMaze.csproj.nuget.dgspec.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/obj/RatMaze.csproj.nuget.g.props" beforeDir="false" afterPath="$PROJECT_DIR$/obj/RatMaze.csproj.nuget.g.props" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/obj/project.assets.json" beforeDir="false" afterPath="$PROJECT_DIR$/obj/project.assets.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/obj/project.nuget.cache" beforeDir="false" afterPath="$PROJECT_DIR$/obj/project.nuget.cache" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/obj/project.packagespec.json" beforeDir="false" afterPath="$PROJECT_DIR$/obj/project.packagespec.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/obj/rider.project.restore.info" beforeDir="false" afterPath="$PROJECT_DIR$/obj/rider.project.restore.info" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -27,9 +47,9 @@
   },
   &quot;keyToStringList&quot;: {
     &quot;rider.external.source.directories&quot;: [
-      &quot;/Users/10212005/Library/Application Support/JetBrains/Rider2022.3/resharper-host/DecompilerCache&quot;,
-      &quot;/Users/10212005/Library/Application Support/JetBrains/Rider2022.3/resharper-host/SourcesCache&quot;,
-      &quot;/Users/10212005/.local/share/Symbols/src&quot;
+      &quot;C:\\Users\\10212\\AppData\\Roaming\\JetBrains\\Rider2022.3\\resharper-host\\DecompilerCache&quot;,
+      &quot;C:\\Users\\10212\\AppData\\Roaming\\JetBrains\\Rider2022.3\\resharper-host\\SourcesCache&quot;,
+      &quot;C:\\Users\\10212\\AppData\\Local\\Symbols\\src&quot;
     ]
   }
 }</component>
@@ -63,6 +83,9 @@
       <updated>1680616504670</updated>
       <workItem from="1680616506062" duration="13355000" />
       <workItem from="1680802239665" duration="8490000" />
+      <workItem from="1680829982695" duration="806000" />
+      <workItem from="1680876560770" duration="1624000" />
+      <workItem from="1680976747869" duration="11323000" />
     </task>
     <servers />
   </component>
