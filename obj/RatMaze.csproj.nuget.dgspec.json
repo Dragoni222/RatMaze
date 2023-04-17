@@ -1,27 +1,25 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\10212\\Desktop\\RatMaze\\RatMaze.csproj": {}
+    "/Users/10212005/Desktop/RatMaze/RatMaze.csproj": {}
   },
   "projects": {
-    "C:\\Users\\10212\\Desktop\\RatMaze\\RatMaze.csproj": {
+    "/Users/10212005/Desktop/RatMaze/RatMaze.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\10212\\Desktop\\RatMaze\\RatMaze.csproj",
+        "projectUniqueName": "/Users/10212005/Desktop/RatMaze/RatMaze.csproj",
         "projectName": "RatMaze",
-        "projectPath": "C:\\Users\\10212\\Desktop\\RatMaze\\RatMaze.csproj",
-        "packagesPath": "C:\\Users\\10212\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\10212\\Desktop\\RatMaze\\obj\\",
+        "projectPath": "/Users/10212005/Desktop/RatMaze/RatMaze.csproj",
+        "packagesPath": "/Users/10212005/.nuget/packages/",
+        "outputPath": "/Users/10212005/Desktop/RatMaze/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\10212\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "/Users/10212005/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net7.0"
         ],
         "sources": {
-          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -55,7 +53,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\7.0.202\\RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/Users/10212005/.dotnet/sdk/7.0.101/RuntimeIdentifierGraph.json"
         }
       }
     }

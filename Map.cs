@@ -1,6 +1,8 @@
-﻿// 0 = open 1 = wall 2 = goal 3 = player
+﻿//todo add partial abstractions and implement them in the logic training system
+
 
 using System.Diagnostics;
+using System.Drawing;
 using System.Numerics;
 
 int[,] map =
@@ -12,6 +14,36 @@ int[,] map =
     {1,1,1,1,1}  //y = 4
 };
 
+AIDimension testMatrix = new AIDimension(4);
+testMatrix = new AIDimension(3, testMatrix, true);
+testMatrix = new AIDimension(2, testMatrix, true);
+testMatrix.Positions[0].Positions[0].Weights[0].GiveDopamine(1, testMatrix.Positions[0].Positions[0].Weights);
+List<Input> testSituation = new List<Input>();
+testSituation.Add( new Input(2, 0));
+testSituation.Add(new Input(3, 0));
+testSituation.Add( new Input(4, 0));
+testSituation[1].SetUnknown(true);
+testSituation[2].SetUnknown(true);
+AIDimension abstractTestMatrix = AIDimension.Abstract(testMatrix, testSituation);
+
+List<Weight[]> aTestMatrixWeightsList = AIDimension.GetAbstractedWeights(abstractTestMatrix);
+
+for (int i = 0; i < aTestMatrixWeightsList.Count; i++)
+{
+    Console.Write("\nD" + i);
+    double totalValue = 0;
+    for (int j = 0; j < aTestMatrixWeightsList[i].Length; j++)
+    {
+        Console.Write(" " + j +"( " );
+        Console.Write(aTestMatrixWeightsList[i][j].GetValue());
+        Console.Write(", " +aTestMatrixWeightsList[i][j].GetDopamine());
+        Console.Write(")");
+        totalValue += aTestMatrixWeightsList[i][j].GetValue();
+    }
+    Console.Write( "  Total Val: " + totalValue);
+}
+
+Console.ReadLine();
 
 bool end = false;
 
@@ -237,6 +269,88 @@ void LoadAiTicTacToe()
     }
 }
 
+void LoadLogicAiTest()
+{
+    Console.Clear();
+    Console.WriteLine("Seed: ");
+    string input = Console.ReadLine();
+    Random random = new Random(int.Parse(input));
+    Console.WriteLine("Training BaseTransforms. Num of training cycles per transform:");
+    input = Console.ReadLine();
+    int cycles = int.Parse(input);
+    List<Transform> baseTransforms = new List<Transform>();
+    Console.WriteLine("Maximum number in inputs?");
+    input = Console.ReadLine();
+    int maximum = int.Parse(input);
+    baseTransforms.Add(new BaseTransform(new Addition(maximum)));
+    baseTransforms.Add(new BaseTransform(new Subtraction(maximum)));
+
+    Stopwatch timer = new Stopwatch();
+    timer.Start();
+    for (int i = 0; i < cycles; i++)
+    {
+        if (i % 1000000 == 0)
+        {
+            Console.WriteLine("Cycle: " + i + "    Time: "+ timer.Elapsed);
+        }
+        baseTransforms[0].TrainTransform(random);
+        baseTransforms[1].TrainTransform(random);
+    }
+    timer.Stop();
+    Console.WriteLine("Completed basic transform training.");
+    Console.WriteLine("Cycles for Logic Training? ");
+    input = Console.ReadLine();
+
+    List<Input> aiInputs = new List<Input>();
+    aiInputs.Add(new Input((ulong)maximum, 0)); // first number
+    aiInputs.Add(new Input(2, 0)); //operator
+    aiInputs.Add(new Input((ulong)maximum, 0));//second number
+    aiInputs.Add(new Input((ulong)maximum * 2, 0));//output
+    LogicAI testAi = new LogicAI(aiInputs);
+    testAi.AddTransform(baseTransforms[0]);
+    testAi.AddTransform(baseTransforms[1]);
+    testAi.AddTransform(baseTransforms[2]);
+    List<Input> desiredInputs = new List<Input>();
+    foreach (var aiInput in aiInputs)
+    {
+        desiredInputs.Add(new Input(aiInput.MaxValue, 0));
+    }
+
+
+    for (int i = 0; i < cycles; i++)
+    {
+        if (i % 1000000 == 0)
+        {
+            Console.WriteLine("Cycle: " + i + "    Time: "+ timer.Elapsed);
+        }
+        aiInputs[0].SetValue((ulong)random.Next(0,maximum));
+        aiInputs[1].SetValue((ulong)random.Next(0,1));
+        if (aiInputs[1].GetValue() == 0)
+            aiInputs[2].SetValue((ulong)random.Next(0, maximum));
+        else
+        {
+            aiInputs[2].SetValue((ulong)random.Next(0, (int)aiInputs[0].GetValue()));
+        }
+        aiInputs[3].SetValue(0);
+        for (int j = 0; j < aiInputs.Count - 1; j++)
+        {
+            desiredInputs[j].SetValue((ulong)aiInputs[j].GetValue());
+        }
+
+        if (aiInputs[1].GetValue() == 0)
+        {
+            desiredInputs[4].SetValue((ulong)(aiInputs[0].GetValue() + aiInputs[2].GetValue()) );
+        }
+        else
+        {
+            desiredInputs[4].SetValue((ulong)(aiInputs[0].GetValue() - aiInputs[2].GetValue()) );
+        }
+        
+        testAi.Train(desiredInputs, random, 1);
+    }
+
+}
+
 void LoadQuestion()
 {
     Console.WriteLine("/n Frames to skip? (enter if none)");
@@ -319,7 +433,6 @@ struct Coordinant
 class AI
 {
     public AIDimension AiMatrix;
-    
     private int Outputs;
     public List<Input> Inputs;
 
@@ -339,6 +452,16 @@ class AI
         }
     }
 
+    public void AddInput(Input input)
+    {
+         Inputs.Add(input);
+         AiMatrix = new AIDimension(input.MaxValue, AiMatrix, true);
+    }
+
+    public void AddOutput()
+    {
+        
+    }
     public static Action GetBestActionKnown(AIDimension matrix, List<Input> inputs)
     {
         int[] inputArray = new int[inputs.Count];
@@ -382,7 +505,6 @@ class AI
         }
         return null;
     }
-    
     public static void TrainByDifferenceKnown(AI ai, int expected, Random random, double trainSpeed) // trains with current input values, valuing by difference between expected and given values.
     {
         int[] inputArray = new int[ai.Inputs.Count];
@@ -404,10 +526,13 @@ class AI
         AIDimension.ChangeSpecificWeight(ai.AiMatrix, inputArrayWeight, 1/(difference+0.25d) * trainSpeed);
     }
 
-    
+    public static Weight[] PartialAbstraction(AIDimension matrix, List<Input> situation, int dimensionOutput)
+    {
+        AIDimension abstractedMatrix = AIDimension.Abstract(matrix, situation);
+        List<Weight[]> weightsList = AIDimension.GetAbstractedWeights(abstractedMatrix);
+        return weightsList[dimensionOutput];
 
-    
-    
+    }
 
 
 }
@@ -423,6 +548,12 @@ class Input
         MaxValue = maxValue;
         CurrentValue = currentValue;
         Unknown = false;
+    }
+
+    public Input(ulong currentValue)
+    {
+        MaxValue = currentValue + 1;
+        CurrentValue = currentValue;
     }
 
     public Input()
@@ -451,6 +582,22 @@ class Input
             return null;
         }
         return CurrentValue;
+    }
+
+    public void SetUnknown(bool unknown)
+    {
+        Unknown = unknown;
+    }
+
+    public static int[] ConvertToAddress(List<Input> inputs)
+    {
+        int[] weightList = new int[inputs.Count - 1];
+        for (int i = 0; i < inputs.Count; i++)
+        {
+            weightList[i] = (int)inputs[i].GetValue();
+        }
+
+        return weightList;
     }
     
 }
@@ -500,7 +647,7 @@ class AIDimension
 
         Positions = new List<AIDimension>();
     }
-
+    
     public AIDimension(List<AIDimension> positions)
     {
         Positions = positions;
@@ -643,30 +790,222 @@ class AIDimension
         return null;
     }
 
-    public static double[] GetWeightsDouble(AIDimension matrix, int[] address)
+    public static void AddWeight(AIDimension matrix, double startDope)
     {
-        if (address.Length == 1)
+        if (matrix.Weights != null)
         {
-            try
+            List<Weight> newWeights = matrix.Weights.ToList();
+            newWeights.Add(new Weight(0, 0, 0));
+            matrix.Weights = newWeights.ToArray();
+            matrix.Weights[^1].GiveDopamine(startDope, matrix.Weights);
+            
+            
+            
+            return;
+        }
+        for (int i = 0; i < matrix.Positions.Count; i++)
+        {
+            AddWeight(matrix.Positions[i], startDope);
+        }
+    }
+
+    //returns a new matrix of potential values for every unknown position
+    public static AIDimension Abstract(AIDimension matrix, List<Input> situationUncopied)
+    {
+        List<Input> situation = new List<Input>(situationUncopied);
+        if (situation[0].GetValue() == null)
+        {
+            situation.RemoveAt(0);
+            List<AIDimension> finalPositions = new List<AIDimension>();
+            //loops through each position in the dimension to create a new dimension with the lower, abstracted dimensions
+            if (matrix.Weights == null)
             {
-                double[] finalWeights = new double[matrix.Positions[address[0]].Weights.Length];
-                for (int i = 0; i < finalWeights.Length; i++)
+                for (int i = 0; i < matrix.Positions.Count; i++)
                 {
-                    finalWeights[i] = matrix.Positions[address[0]].Weights[i].GetValue();
+                    finalPositions.Add(Abstract(matrix.Positions[i], situation));
                 }
-                return finalWeights;
+
+                AIDimension newMatrix = new AIDimension(finalPositions); 
+                
+                //we now have to remove all the layers that have only 1 position
+                
+                return RemoveExtraDimensions(newMatrix);
             }
-            catch (Exception e)
+            else
             {
-                Console.Write("Get Wrong multi Address");
+                //sends the whole weight dimension
+                return matrix;
             }
+            
+
+            
+        }
+        else if (matrix.Weights != null)
+        {
+            if (matrix.Weights.Length < (int)situation[0].GetValue())
+            {
+                throw new Exception("Bad Address Abstraction");
+            }
+            //sends a dimension with a single weight
+            return new AIDimension(new Weight[] { matrix.Weights[(int)situation[0].GetValue()] }); 
+        }
+        else if((int)situation[0].GetValue() > matrix.Positions.Count)
+        {
+            throw new Exception("Bad Address Abstraction");
         }
         else
         {
-            return GetWeightsDouble(matrix.Positions[address[0]], address.Skip(1).ToArray());
+            //if we know the value of this dimension, go to the next
+            AIDimension nextDimensionDown = matrix.Positions[(int)situation[0].GetValue()];
+            situation.RemoveAt(0);
+            return Abstract(nextDimensionDown, situation);
         }
-        Console.WriteLine("GetWeightsFailed");
-        return null;
+        
+        
+    }
+    
+    //takes an array with unneeded single-value dimensions and returns it without them
+    public static AIDimension RemoveExtraDimensions(AIDimension matrix)
+    {
+        if (matrix.Weights == null)
+        {
+            if (matrix.Positions.Count > 1)
+            {
+                List<AIDimension> newPositions = new List<AIDimension>();
+                for (int i = 0; i < matrix.Positions.Count; i++)
+                {
+                    AIDimension newMatrix = RemoveExtraDimensions(matrix.Positions[i]);
+                    if (newMatrix.Weights != null)
+                    {
+                        if (newMatrix.Weights.Length == 1)
+                        {
+                            if (i == 0)
+                            {
+                                matrix.Weights = new Weight[matrix.Positions.Count];
+                            }
+                            matrix.Weights[i] = newMatrix.Weights[0];
+                        }
+                        else
+                        {
+                            newPositions.Add(newMatrix);
+                        }
+                    }
+                    else
+                    {
+                        newPositions.Add(newMatrix);
+                    }
+                    
+                }
+
+                if (newPositions.Count > 0)
+                {
+                    return new AIDimension(newPositions);
+                }
+                else
+                {
+                    matrix.Positions = new List<AIDimension>();
+                    return matrix;
+                }
+                
+            }
+
+            return RemoveExtraDimensions(matrix.Positions[0]);
+            
+        }
+
+        return matrix;
+        
+
+        
+    }
+
+    //each array of weights this returns is the mean of the weights below it, therefore the weight that each position in this dimension is the correct one
+    public static List<Weight[]> GetAbstractedWeights(AIDimension abstractMatrix)
+    {
+        List<Weight[]> final = new List<Weight[]>();
+
+        if (abstractMatrix.Weights == null) //if this is not the lowest layer with the weights
+        {
+            List<double> totalDopeInEachPosition = new List<double>();
+            double totalDope = 0;
+            List<List<Weight[]>> allLowerWeights = new List<List<Weight[]>>();
+            for (int i = 0; i < abstractMatrix.Positions.Count; i++) //for every position in this dimension
+            {
+                Console.WriteLine("Getting lower weights " + i);
+                List<Weight[]> lowerWeights = GetAbstractedWeights(abstractMatrix.Positions[i]); //get the mean weight array
+                allLowerWeights.Add(lowerWeights);
+                double dope = GetWeightsDopamine(lowerWeights[0]); // gets the total dopamine of the next lowest dimension
+                totalDopeInEachPosition.Add(dope);
+                totalDope += dope;
+            }
+
+            Weight[] finalWeights = new Weight[abstractMatrix.Positions.Count];
+
+            for (int i = 0; i < abstractMatrix.Positions.Count; i++) 
+            {
+                //creates a weight at each position in this array based on how much dope the lower positions have
+                finalWeights[i] = new Weight(totalDopeInEachPosition[i]/totalDope, 0, totalDopeInEachPosition[i]);
+                
+                
+            }
+            List<Weight[]> finalLowerWeights = new List<Weight[]>(); 
+            /* since we now have a list of weights from lower levels (allLowerWeights) we now need to create a single weight
+             list for each dimension from our list of lists of weights from each dimension as split up by our current dimension's
+             positions. We do that the same way we consolidate any set of weights: dopamine ratios.
+             
+             In allLowerWeights, the first list layer is of the abstracted weights from each dimension in each position in our 
+             current dimension. The second list layer is each lower dimension itself. The weight[] layer is the weights
+             for each potential position at the given dimension.
+             
+             Thus: at each dimensional layer (list layer 2) we take the weight lists from each of the current dimension's
+             positions, and smash the values at each position in the weight[] together via dopamine ratio with respect to
+             the total dopamine of each weight at that same position in their weight[] at that dimension, in all of the current
+             dimension's positions
+            
+            */
+            Console.WriteLine("Lower weights: " + allLowerWeights.Count);
+            for (int i = 0; i < allLowerWeights[0].Count; i++) //each dimensional layer
+            {
+      
+                List<Weight[]> currentDimensionsPositions = new List<Weight[]>(); //weight list from each of the current dimension's positions
+                for (int j = 0; j < allLowerWeights.Count; j++) //each position in this top dimension
+                {
+                    currentDimensionsPositions.Add(allLowerWeights[j][i]);
+                }
+
+                totalDope = 0;
+                List<double> dopeInEachLayer = new List<double>();
+                for (int j = 0; j < currentDimensionsPositions[0].Length; j++) //each layer of weights in the current dimension and top position
+                {
+                    double totalLayerDope = 0;
+                    for (int k = 0; k < currentDimensionsPositions.Count; k++)
+                    {
+                        //gets the dope for each layer of weights
+                        totalLayerDope += currentDimensionsPositions[k][j].GetDopamine();
+                        totalDope += currentDimensionsPositions[k][j].GetDopamine();
+                    }
+                    dopeInEachLayer.Add(totalLayerDope);
+                }
+                
+                Weight[] smashedList = new Weight[currentDimensionsPositions[0].Length];
+                for (int j = 0; j < smashedList.Length; j++) //each layer 
+                {
+                    smashedList[j] = new Weight(dopeInEachLayer[j] / totalDope, 0, dopeInEachLayer[j]);
+                }
+                
+                finalLowerWeights.Add(smashedList);
+                
+            }
+            final.Add(finalWeights); // the weight list for the current dimension
+            final.AddRange(finalLowerWeights); //each weight list, now properly smashed into the other lists we now have from the current dimension
+        }
+        else
+        {
+            final.Add(abstractMatrix.Weights);
+            Console.WriteLine("sent lowest weights " + final.Count);
+        }
+        return final;
+
     }
 
 }
@@ -674,7 +1013,7 @@ class AIDimension
 class Weight
 {
     private double value;
-    public int timesUsed;
+    public double timesUsed; //a decimal value means it was used in an abstraction, and only added part of a time used.
     private double dopamine;
     public Weight(double startValue)
     {
@@ -682,13 +1021,13 @@ class Weight
         dopamine = 1;
         timesUsed = 0;
     }
-    public Weight(double startValue, int startTimesUsed)
+    public Weight(double startValue, double startTimesUsed)
     {
         value = startValue;
         dopamine = 1;
         timesUsed = startTimesUsed;
     }
-    public Weight(double startValue, int startTimesUsed, double startDopamine)
+    public Weight(double startValue, double startTimesUsed, double startDopamine)
     {
         value = startValue;
         dopamine = startDopamine;
@@ -886,11 +1225,11 @@ class TicTacToe : Game //player 1 is X player 2 is O
 
     public override void UpdateGame()
     {
-        for (int y = 0; y < 2; y++)
+        for (int y = 0; y <= 2; y++)
         {
             if (GameState[0 + y * 3].GetValue() == GameState[1 + y * 3].GetValue() && GameState[0 + y * 3].GetValue() == GameState[2 + y * 3].GetValue() && GameState[0 + y * 3].GetValue() != 0) // triple on the row
             {
-                GameOver((int)GameState[0 + y].GetValue());
+                GameOver((int)GameState[0 + y * 3].GetValue());
                 
             }
             else if (GameState[0 + y].GetValue() == GameState[3 + y].GetValue() && GameState[0 + y].GetValue() == GameState[6 + y].GetValue()&& GameState[0 + y].GetValue() != 0) // triple on the column
@@ -936,6 +1275,10 @@ class TicTacToe : Game //player 1 is X player 2 is O
             }
             else
             {
+                if (RealPlayer == 2)
+                {
+                    Console.WriteLine("Lmao! You just got beat by someone who started playing less than a minute ago!");
+                }
                 for (int i = AI1Actions.Count - 1; i >= 0; i--)
                 {
                     AI1Actions[i].Weight.GiveDopamine(TrainSpeed * dopeMulti, AI1Actions[i].WeightList);
@@ -953,6 +1296,10 @@ class TicTacToe : Game //player 1 is X player 2 is O
             }
             else
             {
+                if (RealPlayer == 1)
+                {
+                    Console.WriteLine("Lmao! You just got beat by someone who started playing less than a minute ago!");
+                }
                 for (int i = AI2Actions.Count - 1; i >= 0; i--)
                 {
                     AI2Actions[i].Weight.GiveDopamine(TrainSpeed * dopeMulti, AI2Actions[i].WeightList);
@@ -961,6 +1308,13 @@ class TicTacToe : Game //player 1 is X player 2 is O
             }
             
             
+        }
+        else
+        {
+            if (RealPlayer == 1 || RealPlayer == 2)
+            {
+                Console.WriteLine("Cat's Game.");
+            }
         }
 
         GameIsOver = true;
@@ -984,11 +1338,12 @@ class TicTacToe : Game //player 1 is X player 2 is O
             {
                 Console.Write("O|");
             }
-            if ((i + 1) % 3 == 0)
+            if ((i + 1) % 3 == 0 && i != 8)
             {
-                Console.WriteLine("\n__________");
+                Console.WriteLine("\n_______");
             }
         }
+        Console.WriteLine();
 
     }
 
@@ -1011,12 +1366,158 @@ class TicTacToe : Game //player 1 is X player 2 is O
     }
 }
 
+class Addition : Game
+{
+    private int MaxInputSize = 0;
+
+    public Addition(int maxInputSize)
+    {
+        MaxInputSize = maxInputSize;
+        GameState = new List<Input>();
+        GameState.Add(new Input((ulong)MaxInputSize, 0));
+    }
+    
+    public override void Reset()
+    {
+        GameState[0].SetValue(0);
+        GameState[1].SetValue(0);
+    }
+    
+
+    public override void TrainAi(Random random)
+    {
+        GameState[0].SetValue((ulong)random.Next(MaxInputSize));
+        GameState[1].SetValue((ulong)random.Next(MaxInputSize));
+        Action output = AI.GetRandomActionKnown(Ai.AiMatrix, GameState, random);
+        if (output.Output == (int)(GameState[0].GetValue() + GameState[1].GetValue()))
+        {
+            output.GiveDopamine(1 * TrainSpeed);
+        }
+    }
+
+    public override void DisplayGame()
+    {
+        Console.WriteLine($"{GameState[0]} + {GameState[1]} = ");
+    }
+
+    
+
+    public override void PlayerVsAi()
+    {
+        Console.WriteLine("Input 1st number to add (integer):");
+        string input = Console.ReadLine();
+        GameState[0].SetValue((ulong)int.Parse(input));
+        Console.WriteLine("Second number (integer):");
+        input = Console.ReadLine();
+        GameState[1].SetValue((ulong)int.Parse(input));
+        Console.WriteLine("AI says: " + AI.GetBestActionKnown(Ai.AiMatrix, GameState));
+    }
+
+    public override AI MakeSuitableAi()
+    {
+        return new AI(MaxInputSize * 2, GameState);
+    }
+    
+    public override void GameOver(int winner)
+    {
+        throw new NotImplementedException();
+    }
+
+    public override void UpdateGameAI(Action action)
+    {
+        throw new NotImplementedException();
+    }
+
+    public override void UpdateGame()
+    {
+        throw new NotImplementedException();
+    }
+
+    public override void UpdateGamePlayer(int action)
+    {
+        throw new NotImplementedException();
+    }
+}
+class Subtraction : Game
+{
+    private int MaxInputSize = 0;
+
+    public Subtraction(int maxInputSize)
+    {
+        MaxInputSize = maxInputSize;
+        GameState = new List<Input>();
+        GameState.Add(new Input((ulong)MaxInputSize, 0));
+    }
+    
+    public override void Reset()
+    {
+        GameState[0].SetValue(0);
+        GameState[1].SetValue(0);
+    }
+    
+
+    public override void TrainAi(Random random)
+    {
+        GameState[0].SetValue((ulong)random.Next(MaxInputSize));
+        GameState[1].SetValue((ulong)random.Next(MaxInputSize));
+        Action output = AI.GetRandomActionKnown(Ai.AiMatrix, GameState, random);
+        if (output.Output == (int)(GameState[0].GetValue() - GameState[1].GetValue()))
+        {
+            output.GiveDopamine(1 * TrainSpeed);
+        }
+    }
+
+    public override void DisplayGame()
+    {
+        Console.WriteLine($"{GameState[0]} - {GameState[1]} = ");
+    }
+
+    
+
+    public override void PlayerVsAi()
+    {
+        Console.WriteLine("Input 1st number to subtract (integer):");
+        string input = Console.ReadLine();
+        GameState[0].SetValue((ulong)int.Parse(input));
+        Console.WriteLine("Second number (integer, less than 1st):");
+        input = Console.ReadLine();
+        GameState[1].SetValue((ulong)int.Parse(input));
+        Console.WriteLine("AI says: " + AI.GetBestActionKnown(Ai.AiMatrix, GameState));
+    }
+
+    public override AI MakeSuitableAi()
+    {
+        return new AI(MaxInputSize, GameState);
+    }
+    
+    public override void GameOver(int winner)
+    {
+        throw new NotImplementedException();
+    }
+
+    public override void UpdateGameAI(Action action)
+    {
+        throw new NotImplementedException();
+    }
+
+    public override void UpdateGame()
+    {
+        throw new NotImplementedException();
+    }
+
+    public override void UpdateGamePlayer(int action)
+    {
+        throw new NotImplementedException();
+    }
+}
+
 class Action
 {
     public int Output;
     public List<Input> Inputs;
     public Weight Weight;
     public Weight[] WeightList;
+    public AIDimension AbstractMatrix;
 
     public Action(int output, List<Input> inputs, Weight weight, Weight[] weightList)
     {
@@ -1026,7 +1527,215 @@ class Action
         WeightList = weightList;
     }
 
+    public Action(int output, List<Input> inputs, AIDimension abstractMatrix)
+    {
+        Output = output;
+        Inputs = inputs;
+        AbstractMatrix = abstractMatrix;
+    }
+
+    public void GiveDopamine(double dopamine)
+    {
+        if(AbstractMatrix != null) 
+            Weight.GiveDopamine(dopamine, WeightList);
+        else
+        {
+            
+        }
+    }
+
 }
+
+
+
+abstract class Transform //this is the lowest level of transform, performed a by pre-trained feeling AI
+{
+    public int NumOfInputs;
+    public int NumOfOutputs;
+    public abstract void DoTransform(List<Input> inputs, List<int> outputIndex);
+
+    public abstract void TrainTransform(Random random);
+
+
+
+}
+
+class BaseTransform : Transform //this is the lowest level of transform, performed a by pre-trained feeling AI
+{
+    public AI TransformAi;
+    public Game TrainingGame;
+    
+    public BaseTransform(AI ai, Game trainingGame)
+    {
+        TransformAi = ai;
+        NumOfInputs = ai.Inputs.Count;
+        NumOfOutputs = 1;
+        TrainingGame = trainingGame;
+    }
+
+    public BaseTransform(Game trainingGame)
+    {
+        TransformAi = trainingGame.MakeSuitableAi();
+        NumOfInputs = TransformAi.Inputs.Count;
+        NumOfOutputs = 1;
+        TrainingGame = trainingGame;
+    }
+
+    public BaseTransform(int numOfInputs, int numOfPotentialOutputs, Game trainingGame)
+    {
+        NumOfInputs = numOfInputs;
+        TransformAi = new AI(numOfPotentialOutputs, new List<Input>());
+        NumOfOutputs = 1;
+        TrainingGame = trainingGame;
+    }
+
+    public override void DoTransform(List<Input> inputs, List<int> outputIndex)
+    {
+        inputs[outputIndex[0]].SetValue((ulong)AI.GetBestActionKnown(TransformAi.AiMatrix, inputs).Output);
+    }
+
+    public override void TrainTransform(Random random)
+    {
+        TrainingGame.TrainAi(random);
+    }
+}
+
+class MetaTransform : Transform
+{
+    private List<Transform> Transforms;
+    public MetaTransform(List<Transform> transforms)
+    {
+        Transforms = transforms;
+    }
+
+    public override void DoTransform(List<Input> inputs, List<int> outputIndex)
+    {
+        for (int i = 0; i < Transforms.Count; i++)
+        {
+            Transforms[i].DoTransform(inputs, outputIndex);
+        }
+    }
+
+    public override void TrainTransform(Random random)
+    {
+        for (int i = 0; i < Transforms.Count; i++)
+        {
+            Transforms[i].TrainTransform(random);
+        }
+    }
+}
+
+
+class LogicAI //basically an AI trained to make SeriesTransforms to solve problems
+{
+    public List<Transform> AllTransforms;
+    public AI TransformChooserAI; // output 0 stops adding new transforms to the list
+    public AI InputChooserAI; //Chooses which inputs to put into each transform
+    public List<Input> GivenSituation; //We can change the inputs themselves after initializing, but not how many of them
+
+    public void AddTransform(Transform newTransform, List<Input> situationUsedIn) //only add a transform when you are very sure it is useful
+    {
+        AllTransforms.Add(newTransform);
+        AIDimension.AddWeight(TransformChooserAI.AiMatrix, 1);
+        int[] weightList = new int[situationUsedIn.Count - 1];
+        for (int i = 0; i < situationUsedIn.Count; i++)
+        {
+            weightList[i] = (int)situationUsedIn[i].GetValue();
+        }
+        
+        Weight[] currentWeights = AIDimension.GetWeights(TransformChooserAI.AiMatrix, weightList);
+        currentWeights[^1].GiveDopamine(AIDimension.GetWeightsDopamine(currentWeights)/2, currentWeights);
+    }
+
+    public void AddTransform(Transform newTransform)
+    {
+        AllTransforms.Add(newTransform);
+        AIDimension.AddWeight(TransformChooserAI.AiMatrix, 1);
+    }
+
+    public LogicAI(List<Input> inputs)
+    {
+        TransformChooserAI = new AI(0, inputs);
+        GivenSituation = inputs;
+        AllTransforms = new List<Transform>();
+    }
+    public LogicOutput GetActionRandom(Random random)
+    {
+        bool stop = false;
+        List<Transform> transformsUndergone = new List<Transform>();
+        List<int> transformIndexes = new List<int>();
+        while (!stop)
+        {
+            int chosenTransform = AI.GetRandomActionKnown(TransformChooserAI.AiMatrix, GivenSituation, random).Output;
+            if (chosenTransform != 0)
+            {
+                transformsUndergone.Add(AllTransforms[chosenTransform]);
+                transformIndexes.Add(chosenTransform);
+            }
+            else
+            {
+                return new LogicOutput(transformsUndergone, transformIndexes);
+            }
+            
+        }
+
+        throw new Exception("should never happen.");
+    }
+
+    public void Train(List<Input> desiredOutput, Random random, double trainSpeed)
+    {
+        LogicOutput output = GetActionRandom(random);
+        int incorrectOutputs = 0;
+        for (int i = 0; i < desiredOutput.Count; i++)
+        {
+            if (GivenSituation[i].GetValue() != desiredOutput[i].GetValue())
+            {
+                incorrectOutputs++;
+            }
+        }
+
+        for(int i = 0; i < output.TransformIndexes.Count; i++)
+        {
+            int transformIndex = output.TransformIndexes[i];
+            Weight[] weights = AIDimension.GetWeights(TransformChooserAI.AiMatrix,
+                Input.ConvertToAddress(GivenSituation)); // gets the Ai's opinion on each situation
+            weights[transformIndex].GiveDopamine(1/(double)(incorrectOutputs + 1) * trainSpeed, weights); //weights it based on how right it was.
+        }
+    }
+
+    public Transform CreateTransform(Game gameTransformPlays)
+    {
+        return new BaseTransform(gameTransformPlays.MakeSuitableAi(), gameTransformPlays);
+    }
+
+    public Transform CreateTransform(List<Transform> transforms)
+    {
+        return new MetaTransform(transforms);
+    }
+    
+
+    
+
+}
+
+class LogicOutput
+{
+    public List<Transform> Transforms;
+    public List<int> TransformIndexes;
+
+    public LogicOutput(List<Transform> transforms, List<int> transformIndexes)
+    {
+        Transforms = transforms;
+        TransformIndexes = transformIndexes;
+    }
+    
+}
+
+
+
+
+
+
 
 
 
