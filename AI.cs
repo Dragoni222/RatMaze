@@ -1,5 +1,5 @@
 namespace RatMaze;
-
+using RatMaze;
 class AI
 {
     public AIDimension AiMatrix;
@@ -104,5 +104,93 @@ class AI
 
     }
 
+    public static List<int> RelevantInputIndexes(AIDimension matrix, int dimensionToCheck, double criticalValue)
+    {
+        int totalDimensions = 1; //the 0th dimension is the weight dimension
+        AIDimension currentDimension = matrix;
+        int dimensionMaxValue = 0;
+        bool bottom = false;
+        while (bottom == false)
+        {
+            if (totalDimensions == dimensionToCheck)
+            {
+                dimensionMaxValue = currentDimension.Positions.Count;
+            }
+            if (currentDimension.Weights != null)
+            {
+                bottom = true;
+            }
+            else
+            {
+                totalDimensions++;
+                currentDimension = currentDimension.Positions[0];
+            }
+            
+        }
 
+        List<int> final = new List<int>();
+        
+        List<Input> currentAbstraction = new List<Input>();
+        for (int j = 0; j < totalDimensions; j++)
+        {
+            if (j == dimensionToCheck)
+            {
+                currentAbstraction.Add(new Input((ulong)dimensionMaxValue + 1, 0));
+            }
+            else
+            {
+                currentAbstraction.Add(new Input());
+            }
+        }
+
+        double[] chiSqsForEachDimension = new double[totalDimensions];
+        int[] dfForEachDimension = new int[totalDimensions];
+        for (int i = 0; i < dimensionMaxValue; i++) //gets the chi-sq at each dimension for each value of the observed dimension
+        {
+            currentAbstraction[dimensionToCheck].SetValue((ulong)i);
+            AIDimension abstractMatrix = AIDimension.Abstract(matrix, currentAbstraction);
+            List<Weight[]> weights = AIDimension.GetAbstractedWeights(abstractMatrix);
+            for (int j = 0; j < weights.Count; j++)
+            {
+                double chiSq = 0; // we use a chi-sq test to determine if something correlates
+                double expected = 1 / (double)weights[j].Length;
+                for (int k = 0; k < weights[j].Length; k++)
+                {
+                    chiSq += Math.Pow(weights[j][k].GetValue() - expected, 2) / expected;
+                }
+
+                if (i == 0)
+                {
+                    chiSqsForEachDimension[j] = chiSq;
+                    dfForEachDimension[j] = weights[j].Length - 1;
+                }
+
+                else
+                    chiSqsForEachDimension[j] += chiSq;
+            }
+        }
+        for(int i = 0; i < totalDimensions; i++) //computes whether or not each dimension impacts the observed one
+        {
+            
+            if (chiSqsForEachDimension[i] == 0)
+            {
+                
+            }
+            else if (ChiSq.ChiSqPval(chiSqsForEachDimension[i], dfForEachDimension[i]) < criticalValue)
+            {
+                Console.WriteLine(ChiSq.ChiSqPval(chiSqsForEachDimension[i], dfForEachDimension[i]));
+                final.Add(i);
+            }
+            else
+            {
+                Console.WriteLine(ChiSq.ChiSqPval(chiSqsForEachDimension[i], dfForEachDimension[i]));
+            }
+        }
+
+        return final;
+
+    }
+    
+    
 }
+
