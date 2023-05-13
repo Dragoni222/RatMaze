@@ -106,6 +106,20 @@ class AI
 
     public static List<int> RelevantInputIndexes(AIDimension matrix, int dimensionToCheck, double criticalValue)
     {
+        double[] pVals = InputRelevancePVals(matrix, dimensionToCheck);
+        List<int> final = new List<int>();
+        for (int i = 0; i < pVals.Length; i++)
+        {
+            if (pVals[i] > 0 && pVals[i] <= criticalValue)
+            {
+                final.Add(i);
+            }
+        }
+
+        return final;
+    }
+    public static double[] InputRelevancePVals(AIDimension matrix, int dimensionToCheck)
+    {
         int totalDimensions = 1; //the 0th dimension is the weight dimension
         AIDimension currentDimension = matrix;
         int dimensionMaxValue = 0;
@@ -128,7 +142,7 @@ class AI
             
         }
 
-        List<int> final = new List<int>();
+        double[] final = new double[totalDimensions];
         
         List<Input> currentAbstraction = new List<Input>();
         for (int j = 0; j < totalDimensions; j++)
@@ -171,23 +185,62 @@ class AI
         }
         for(int i = 0; i < totalDimensions; i++) //computes whether or not each dimension impacts the observed one
         {
-            
-            if (chiSqsForEachDimension[i] == 0)
-            {
-                
-            }
-            else if (ChiSq.ChiSqPval(chiSqsForEachDimension[i], dfForEachDimension[i]) < criticalValue)
-            {
-                Console.WriteLine(ChiSq.ChiSqPval(chiSqsForEachDimension[i], dfForEachDimension[i]));
-                final.Add(i);
-            }
+            if(i != dimensionToCheck)
+                final[i] = ChiSq.ChiSqPval(chiSqsForEachDimension[i], dfForEachDimension[i]);
             else
             {
-                Console.WriteLine(ChiSq.ChiSqPval(chiSqsForEachDimension[i], dfForEachDimension[i]));
+                final[i] = -1;
+            }
+            
+        }
+
+        return final;
+    }
+
+    public static double ConfidenceRatio(AIDimension matrix, List<Input> situation, int dimensionToAbstract)
+    {
+        Weight[] startWeights = AIDimension.GetWeights(matrix, Input.ConvertToAddress(situation));
+        double startTimesUsed = 0;
+
+        foreach (Weight weight in startWeights)
+        {
+            startTimesUsed += weight.timesUsed;
+        }
+        List<Input> abstractSituation = situation;
+        List<Weight> endWeights = new List<Weight>();
+        int dimensionPositions = AIDimension.DimensionPositions(matrix, dimensionToAbstract);
+        for (int i = 0; i < dimensionPositions; i++)
+        {
+            abstractSituation[dimensionToAbstract].SetValue((ulong)i);
+            endWeights.AddRange(AIDimension.GetWeights(matrix, Input.ConvertToAddress(abstractSituation)));
+        }
+
+        double endTimesUsed = 0;
+        foreach (Weight weight in endWeights)
+        {
+            endTimesUsed += weight.timesUsed;
+        }
+        
+        Console.WriteLine(endTimesUsed + ", " + startTimesUsed);
+        return endTimesUsed / startTimesUsed;
+
+    }
+
+    public static List<int> NotConfidentInputIndexes(AIDimension matrix,  List<Input> situation, double minimumRatio)
+    {
+        List<int> final = new List<int>();
+        for (int i = 0; i < situation.Count; i++)
+        {
+            if (ConfidenceRatio(matrix, situation, i) > minimumRatio)
+            {
+                final.Add(i);
             }
         }
 
         return final;
+
+
+
 
     }
     

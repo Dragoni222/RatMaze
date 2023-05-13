@@ -403,4 +403,15 @@ class AIDimension
 
     }
 
+    public static int DimensionPositions(AIDimension matrix, int dimension)
+    {
+        AIDimension currentDimension = matrix;
+        for (int i = 0; i < dimension; i++)
+        {
+            currentDimension = currentDimension.Positions[0];
+        }
+
+        return currentDimension.Positions.Count;
+    }
+
 }

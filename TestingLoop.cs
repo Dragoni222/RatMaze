@@ -14,7 +14,45 @@ int[,] map =
     {1,1,1,1,1}  //y = 4
 };
 
-
+//todo: Somehow abstract situations. 
+/*
+ * What I mean is, a set of inputs that describe a situation is often similar to a part of
+ * a previous situation. I.E. a visual input of Tic-Tac-Toe can show an unfamiliar position, but the AI
+ * should recognise that there are Xs and Os, even if they aren't in the same position they always are in.
+ * Secondarily, it should see that there are Xs and Os at all.
+ *
+ * Some thoughts:
+ * Understanding that two situations are innately similar requires understanding time, or the idea that one
+ * situation becomes another one, then another, then another. Only then can we truly compare 2 situations, and not
+ * by the inputs, but by what kinds of situations came before them and which ones are likely to come after.
+ *
+ * Thus, I propose that training an AI that can understand situational similarity as a means of solving a problem
+ * must also understand that a situation can be similar even if the set of inputs given is
+ * very different, or even just different in a way the AI has a hard time understanding, like shifted one
+ * to the left. The only way to on-the-spot determine if two situations are similar is to observe whether or not
+ * those situations lead to similar conclusions.
+ *
+ * So, we need to understand time to progress any further.
+ *
+ * Let's start here:
+ * TIME - A set of situations in a particular order, with CAUSALITY being the link between each situation.
+ * CAUSALITY - The nature of reality that determines which situations come after which other situations in TIME.
+ *
+ * I would prefer to relate them in a way where one need not define the other, but these should suffice for our
+ * programming.
+ *
+ * From these definitions, it is clear that the AI needs to predict causality, not just what action is correct in
+ * a given situation.
+ *
+ * So, we need an AI that takes a given situation (easy) and outputs the next situation (fuck)
+ * 
+ * My AI is really only capable of outputing a single integer normally, but it might be able to output
+ * a set of integers if we add an extra dimension at the end that says which index in the output it is choosing,
+ * but tbh I haven't tested that yet so it may be infeasible without much greater computing power.
+ *
+ * Ah well, let's try it anyways.
+ * 
+ */
 
 
 bool end = false;
