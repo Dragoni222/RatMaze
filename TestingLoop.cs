@@ -59,7 +59,7 @@ bool end = false;
 
 while (end == false)
 {
-    LoadFrame();
+    Console.WriteLine("write 'tic' for tic tac toe, 'aitest' for addition, 'matrixtest' to create a large tensor.");
     string answer = Console.ReadLine();
     int answerInt = 1;
     if (answer == null)
@@ -91,12 +91,7 @@ while (end == false)
         }
     }
         
-
-
-    for (int i = 0; i < answerInt; i++)
-    {
-        
-    }
+    
     
 }
 
